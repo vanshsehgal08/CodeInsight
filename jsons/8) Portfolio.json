@@ -1,0 +1,47 @@
+{
+  "showMenu": {
+    "code": "const showMenu = (toggleId, navId) =>{\n    const toggle = document.getElementById(toggleId),\n    nav = document.getElementById(navId)\n\n    if(toggle && nav){\n        toggle.addEventListener('click', ()=>{\n            nav.classList.toggle('show')\n        })\n    }\n}",
+    "calls": [
+      "if"
+    ],
+    "is_component": true,
+    "file": "assets\\js\\main.js",
+    "breadcrumbs": "assets > js > main.js",
+    "language": "javascript"
+  },
+  "if": {
+    "code": "if(scrollY > sectionTop && scrollY <= sectionTop + sectionHeight){\n            document.querySelector('.nav__menu a[href*=' + sectionId + ']').classList.add('active')\n        }",
+    "calls": [],
+    "file": "assets\\js\\main.js",
+    "breadcrumbs": "assets > js > main.js",
+    "language": "javascript"
+  },
+  "linkAction": {
+    "code": "function linkAction(){\n    const navMenu = document.getElementById('nav-menu')\n    // When we click on each nav__link, we remove the show-menu class\n    navMenu.classList.remove('show')\n}",
+    "calls": [],
+    "is_component": true,
+    "file": "assets\\js\\main.js",
+    "breadcrumbs": "assets > js > main.js",
+    "language": "javascript"
+  },
+  "navMenu": {
+    "code": "class\n    navMenu.classList.remove('show')\n}\nnavLink.forEach(n => n.addEventListener('click', linkAction))\n\n/*==================== SCROLL SECTIONS ACTIVE LINK ====================*/\nconst sections = document.querySelectorAll('section[id]')\n\nfunction scrollActive(){\n    const scrollY = window.pageYOffset\n\n    sections.forEach(current =>{\n        const sectionHeight = current.offsetHeight\n        const sectionTop = current.offsetTop - 50;\n        sectionId = current.getAttribute('id')\n\n        if(scrollY > sectionTop && scrollY <= sectionTop + sectionHeight){\n            document.querySelector('.nav__menu a[href*=' + sectionId + ']').classList.add('active')\n        }else{\n            document.querySelector('.nav__menu a[href*=' + sectionId + ']').classList.remove('active')\n        }\n    }",
+    "calls": [
+      "scrollActive",
+      "if"
+    ],
+    "file": "assets\\js\\main.js",
+    "breadcrumbs": "assets > js > main.js",
+    "language": "javascript"
+  },
+  "scrollActive": {
+    "code": "function scrollActive(){\n    const scrollY = window.pageYOffset\n\n    sections.forEach(current =>{\n        const sectionHeight = current.offsetHeight\n        const sectionTop = current.offsetTop - 50;\n        sectionId = current.getAttribute('id')\n\n        if(scrollY > sectionTop && scrollY <= sectionTop + sectionHeight){\n            document.querySelector('.nav__menu a[href*=' + sectionId + ']').classList.add('active')\n        }else{\n            document.querySelector('.nav__menu a[href*=' + sectionId + ']').classList.remove('active')\n        }\n    })\n}",
+    "calls": [
+      "if"
+    ],
+    "is_component": true,
+    "file": "assets\\js\\main.js",
+    "breadcrumbs": "assets > js > main.js",
+    "language": "javascript"
+  }
+}

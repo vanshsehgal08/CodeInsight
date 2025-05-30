@@ -1,0 +1,223 @@
+{
+  "get_settings_command": {
+    "code": "def get_settings_command():\n    verify_environment()\n    SETTINGS_KEYS = (\n        'SECRET_KEY',\n        'POSTGRES_SERVER_NAME',\n        'POSTGRES_ADMIN_USER',\n        'POSTGRES_ADMIN_PASSWORD',\n        'POSTGRES_HOST',\n        'APP_DB_NAME',\n        'DJANGO_SETTINGS_MODULE',\n        'AZ_STORAGE_ACCOUNT_NAME',\n        'AZ_STORAGE_CONTAINER',\n        'AZ_STORAGE_KEY',\n    )\n    settings_pairs = ['{}={}'.format(k, os.getenv(k)) for k in SETTINGS_KEYS]\n    return settings_command + settings_pairs",
+    "calls": [
+      "verify_environment"
+    ],
+    "file": "bin\\cli.py",
+    "breadcrumbs": "bin > cli.py"
+  },
+  "main": {
+    "code": "def main(check_env, deploying):\n    \"\"\"CLI for working with data and deployment\"\"\"\n    if os.getenv(\"DJANGO_SETTINGS_MODULE\") == 'market.azure':\n        security_check = input(\n            'You are currently accessing the Azure environment. Is this what you want to do? [y/n]: ')\n        if security_check == 'n':\n            print(\"Exiting\")\n            exit()\n\n    # if check_env:\n        # subprocess.call(\"grep -v '^#' .env | xargs\")\n\n    migrate = input(\"Migrate the database? [y/n]: \")\n    if migrate == 'y':\n        process_migrate = subprocess.check_call(\n            ['python', 'manage.py', 'migrate'])\n\n    prepopulate = input(\"Prepopulate the database? [y/n]: \")\n    # TODO: this should be done by default in the migration step\n    if prepopulate == 'y':\n        process_makesuper = subprocess.check_call(\n            ['python', 'manage.py', 'prepopulate'])\n\n    makesuper = input(\"Create the admin user? [y/n]: \")\n    if makesuper == 'y':\n        process_makesuper = subprocess.check_call(\n            ['python', 'manage.py', 'makesuper'])\n\n    if deploying:\n        REQUIRED_ENV_VARS = (\n            'AZ_GROUP',\n            'AZ_LOCATION',\n            'POSTGRES_SERVER_NAME',\n            'POSTGRES_ADMIN_USER',\n            'POSTGRES_ADMIN_PASSWORD',\n            'APP_DB_NAME',\n        )\n\n        missing = []\n        for v in REQUIRED_ENV_VARS:\n            if v not in os.environ:\n                missing.append(v)\n        if missing:\n            print(\"Required Environment Variables Unset:\")\n            print(\"\\t\" + \"\\n\\t\".join(missing))\n            print(\"Exiting.\")\n            exit()\n\n        create_server = input('Create PostgreSQL server? [y/n]: ')\n        if create_server == 'y':\n            print(\"Creating PostgreSQL server...\")\n            subprocess.check_call(create_server_command)\n\n        create_rule = input('Create firewall rules? [y/n]: ')\n        local_ip_firewall_command = get_local_ip_firewall_command()\n        if create_rule == 'y':\n            print(\"Allowing access from Azure...\")\n            subprocess.check_call(azure_firewall_command)\n            print(\"Allowing access from local IP...\")\n            subprocess.check_call(local_ip_firewall_command)\n\n        create_app_db = input('Create App DB? [y/n]: ')\n        if create_app_db == 'y':\n            print(\"Creating App DB...\")\n            subprocess.check_call(create_db_command)\n\n        print(\"Getting access details...\")\n        subprocess.check_call(connect_details_command)\n\n        # Connect to Azure using connection string format (to force SSL)\n        # psql \"host=$POSTGRES_HOST sslmode=require port=5432 user=$POSTGRES_ADMIN_USER@$POSTGRES_SERVER_NAME dbname=postgres\" -W\n\n    update_azure_env = input(\"Update the azure environment? [y/n]: \")\n    if update_azure_env == 'y':\n        print(\"Updating App Settings... \")\n        sys.stdout.flush()\n        command = get_settings_command()\n        process_update_env = subprocess.check_call(command)\n        print(\"Finished updating app settings\")\n\n    print(\"Exiting...\")\n    sys.exit()",
+    "calls": [
+      "get_local_ip_firewall_command",
+      "get_settings_command"
+    ],
+    "file": "bin\\cli.py",
+    "breadcrumbs": "bin > cli.py"
+  },
+  "get_local_ip_firewall_command": {
+    "code": "def get_local_ip_firewall_command():\n    with urllib.request.urlopen('http://ip.42.pl/raw') as f:\n        my_ip = f.read()\n        local_ip_firewall_command = [\n            'az', 'postgres', 'server', 'firewall-rule', 'create',\n            '--resource-group', os.getenv('AZ_GROUP'),\n            '--server-name', os.getenv('POSTGRES_SERVER_NAME'),\n            '--start-ip-address', my_ip,\n            '--end-ip-address', my_ip,\n            '--name', 'AllowMyIP',\n        ]\n        return local_ip_firewall_command",
+    "calls": [],
+    "file": "bin\\commands.py",
+    "breadcrumbs": "bin > commands.py"
+  },
+  "verify_environment": {
+    "code": "def verify_environment():\n    missing = []\n    for v in REQUIRED_ENV_VARS:\n        if v not in os.environ:\n            missing.append(v)\n    if missing:\n        print(\"Required Environment Variables Unset:\")\n        print(\"\\t\" + \"\\n\\t\".join(missing))\n        print(\"Exiting.\")\n        exit()",
+    "calls": [],
+    "file": "bin\\shared.py",
+    "breadcrumbs": "bin > shared.py"
+  },
+  "make_refund_accepted": {
+    "code": "def make_refund_accepted(modeladmin, request, queryset):\n    queryset.update(refund_requested=False, refund_granted=True)",
+    "calls": [],
+    "file": "core\\admin.py",
+    "breadcrumbs": "core > admin.py"
+  },
+  "copy_items": {
+    "code": "def copy_items(modeladmin, request, queryset):\n    for object in queryset:\n        object.id = None\n        object.save()",
+    "calls": [],
+    "file": "core\\admin.py",
+    "breadcrumbs": "core > admin.py"
+  },
+  "__str__": {
+    "code": "def __str__(self):\n        return f\"{self.pk}\"",
+    "calls": [],
+    "file": "core\\models.py",
+    "breadcrumbs": "core > models.py"
+  },
+  "get_absolute_url": {
+    "code": "def get_absolute_url(self):\n        return reverse(\"core:product\", kwargs={\n            'slug': self.slug\n        })",
+    "calls": [],
+    "file": "core\\models.py",
+    "breadcrumbs": "core > models.py"
+  },
+  "get_add_to_cart_url": {
+    "code": "def get_add_to_cart_url(self):\n        return reverse(\"core:add-to-cart\", kwargs={\n            'slug': self.slug\n        })",
+    "calls": [],
+    "file": "core\\models.py",
+    "breadcrumbs": "core > models.py"
+  },
+  "get_remove_from_cart_url": {
+    "code": "def get_remove_from_cart_url(self):\n        return reverse(\"core:remove-from-cart\", kwargs={\n            'slug': self.slug\n        })",
+    "calls": [],
+    "file": "core\\models.py",
+    "breadcrumbs": "core > models.py"
+  },
+  "get_total_item_price": {
+    "code": "def get_total_item_price(self):\n        return self.quantity * self.item.price",
+    "calls": [],
+    "file": "core\\models.py",
+    "breadcrumbs": "core > models.py"
+  },
+  "get_total_discount_item_price": {
+    "code": "def get_total_discount_item_price(self):\n        return self.quantity * self.item.discount_price",
+    "calls": [],
+    "file": "core\\models.py",
+    "breadcrumbs": "core > models.py"
+  },
+  "get_amount_saved": {
+    "code": "def get_amount_saved(self):\n        return self.get_total_item_price() - self.get_total_discount_item_price()",
+    "calls": [
+      "get_total_item_price",
+      "get_total_discount_item_price"
+    ],
+    "file": "core\\models.py",
+    "breadcrumbs": "core > models.py"
+  },
+  "get_final_price": {
+    "code": "def get_final_price(self):\n        if self.item.discount_price:\n            return self.get_total_discount_item_price()\n        return self.get_total_item_price()",
+    "calls": [
+      "get_total_discount_item_price",
+      "get_total_item_price"
+    ],
+    "file": "core\\models.py",
+    "breadcrumbs": "core > models.py"
+  },
+  "get_total": {
+    "code": "def get_total(self):\n        total = 0\n        for order_item in self.items.all():\n            total += order_item.get_final_price()\n        if self.coupon:\n            total -= self.coupon.amount\n        return total",
+    "calls": [
+      "get_final_price"
+    ],
+    "file": "core\\models.py",
+    "breadcrumbs": "core > models.py"
+  },
+  "create_ref_code": {
+    "code": "def create_ref_code():\n    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=20))",
+    "calls": [],
+    "file": "core\\views.py",
+    "breadcrumbs": "core > views.py"
+  },
+  "get": {
+    "code": "def get(self, *args, **kwargs):\n        form = RefundForm()\n        context = {\n            'form': form\n        }\n        return render(self.request, \"request_refund.html\", context)",
+    "calls": [
+      "get",
+      "get",
+      "get",
+      "get"
+    ],
+    "file": "core\\views.py",
+    "breadcrumbs": "core > views.py"
+  },
+  "post": {
+    "code": "def post(self, *args, **kwargs):\n        form = RefundForm(self.request.POST)\n        if form.is_valid():\n            ref_code = form.cleaned_data.get('ref_code')\n            message = form.cleaned_data.get('message')\n            email = form.cleaned_data.get('email')\n            # edit the order\n            try:\n                order = Order.objects.get(ref_code=ref_code)\n                order.refund_requested = True\n                order.save()\n\n                # store the refund\n                refund = Refund()\n                refund.order = order\n                refund.reason = message\n                refund.email = email\n                refund.save()\n\n                messages.info(self.request, \"Your request was received\")\n                return redirect(\"core:request-refund\")\n\n            except ObjectDoesNotExist:\n                messages.info(self.request, \"This order does not exist\")\n                return redirect(\"core:request-refund\")",
+    "calls": [
+      "get",
+      "get",
+      "get_total",
+      "get_total",
+      "create_ref_code",
+      "get",
+      "get",
+      "get",
+      "get",
+      "get",
+      "get",
+      "get",
+      "get",
+      "get",
+      "get",
+      "get_coupon",
+      "get",
+      "get",
+      "get",
+      "get"
+    ],
+    "file": "core\\views.py",
+    "breadcrumbs": "core > views.py"
+  },
+  "add_to_cart": {
+    "code": "def add_to_cart(request, slug):\n    item = get_object_or_404(Item, slug=slug)\n    order_item, created = OrderItem.objects.get_or_create(\n        item=item,\n        user=request.user,\n        ordered=False\n    )\n    order_qs = Order.objects.filter(user=request.user, ordered=False)\n    if order_qs.exists():\n        order = order_qs[0]\n        if order.items.filter(item__slug=item.slug).exists():\n            order_item.quantity += 1\n            order_item.save()\n            messages.info(request, \"Item qty was updated.\")\n            return redirect(\"core:order-summary\")\n        else:\n            order.items.add(order_item)\n            messages.info(request, \"Item was added to your cart.\")\n            return redirect(\"core:order-summary\")\n    else:\n        ordered_date = timezone.now()\n        order = Order.objects.create(\n            user=request.user, ordered_date=ordered_date)\n        order.items.add(order_item)\n        messages.info(request, \"Item was added to your cart.\")\n    return redirect(\"core:order-summary\")",
+    "calls": [],
+    "file": "core\\views.py",
+    "breadcrumbs": "core > views.py"
+  },
+  "remove_from_cart": {
+    "code": "def remove_from_cart(request, slug):\n    item = get_object_or_404(Item, slug=slug)\n    order_qs = Order.objects.filter(\n        user=request.user,\n        ordered=False)\n    if order_qs.exists():\n        order = order_qs[0]\n        # check if the order item is in the order\n        if order.items.filter(item__slug=item.slug).exists():\n            order_item = OrderItem.objects.filter(\n                item=item,\n                user=request.user,\n                ordered=False\n            )[0]\n            order.items.remove(order_item)\n            messages.info(request, \"Item was removed from your cart.\")\n            return redirect(\"core:order-summary\")\n        else:\n            # add a message saying the user dosent have an order\n            messages.info(request, \"Item was not in your cart.\")\n            return redirect(\"core:product\", slug=slug)\n    else:\n        # add a message saying the user dosent have an order\n        messages.info(request, \"u don't have an active order.\")\n        return redirect(\"core:product\", slug=slug)\n    return redirect(\"core:product\", slug=slug)",
+    "calls": [],
+    "file": "core\\views.py",
+    "breadcrumbs": "core > views.py"
+  },
+  "remove_single_item_from_cart": {
+    "code": "def remove_single_item_from_cart(request, slug):\n    item = get_object_or_404(Item, slug=slug)\n    order_qs = Order.objects.filter(\n        user=request.user,\n        ordered=False)\n    if order_qs.exists():\n        order = order_qs[0]\n        # check if the order item is in the order\n        if order.items.filter(item__slug=item.slug).exists():\n            order_item = OrderItem.objects.filter(\n                item=item,\n                user=request.user,\n                ordered=False\n            )[0]\n            if order_item.quantity > 1:\n                order_item.quantity -= 1\n                order_item.save()\n            else:\n                order.items.remove(order_item)\n            messages.info(request, \"This item qty was updated.\")\n            return redirect(\"core:order-summary\")\n        else:\n            # add a message saying the user dosent have an order\n            messages.info(request, \"Item was not in your cart.\")\n            return redirect(\"core:product\", slug=slug)\n    else:\n        # add a message saying the user dosent have an order\n        messages.info(request, \"u don't have an active order.\")\n        return redirect(\"core:product\", slug=slug)\n    return redirect(\"core:product\", slug=slug)",
+    "calls": [],
+    "file": "core\\views.py",
+    "breadcrumbs": "core > views.py"
+  },
+  "get_coupon": {
+    "code": "def get_coupon(request, code):\n    try:\n        coupon = Coupon.objects.get(code=code)\n        return coupon\n    except ObjectDoesNotExist:\n        messages.info(request, \"This coupon does not exist\")\n        return redirect(\"core:checkout\")",
+    "calls": [
+      "get"
+    ],
+    "file": "core\\views.py",
+    "breadcrumbs": "core > views.py"
+  },
+  "handle": {
+    "code": "def handle(self, *args, **kwargs):\n        current_project_name = kwargs['current'][0]\n        new_project_name = kwargs['new'][0]\n\n        # logic for renaming the files\n\n        files_to_rename = [f'{current_project_name}/settings.py',\n                           f'{current_project_name}/wsgi.py', 'manage.py']\n\n        for f in files_to_rename:\n            with open(f, 'r') as file:\n                filedata = file.read()\n\n            filedata = filedata.replace(current_project_name, new_project_name)\n\n            with open(f, 'w') as file:\n                file.write(filedata)\n\n        os.rename(current_project_name, new_project_name)\n\n        self.stdout.write(self.style.SUCCESS(\n            'Project has been renamed to %s' % new_project_name))",
+    "calls": [],
+    "file": "core\\management\\commands\\rename.py",
+    "breadcrumbs": "core > management > commands > rename.py"
+  },
+  "add_arguments": {
+    "code": "def add_arguments(self, parser):\n        parser.add_argument('current', type=str, nargs='+',\n                            help='The current Django project folder name')\n        parser.add_argument('new', type=str, nargs='+',\n                            help='The new Django project name')",
+    "calls": [],
+    "file": "core\\management\\commands\\rename.py",
+    "breadcrumbs": "core > management > commands > rename.py"
+  },
+  "cart_item_count": {
+    "code": "def cart_item_count(user):\n    if user.is_authenticated:\n        qs = Order.objects.filter(user=user, ordered=False)\n        if qs.exists():\n            return qs[0].items.count()\n    return 0",
+    "calls": [],
+    "file": "core\\templatetags\\cart_template_tags.py",
+    "breadcrumbs": "core > templatetags > cart_template_tags.py"
+  },
+  "categories": {
+    "code": "def categories():\n    items = Category.objects.filter(is_active=True).order_by('title')\n    items_li = \"\"\n    for i in items:\n        items_li += \"\"\"<li><a href=\"/category/{}\">{}</a></li>\"\"\".format(i.slug, i.title)\n    return mark_safe(items_li)",
+    "calls": [],
+    "file": "core\\templatetags\\category_template_tags.py",
+    "breadcrumbs": "core > templatetags > category_template_tags.py"
+  },
+  "categories_mobile": {
+    "code": "def categories_mobile():\n    items = Category.objects.filter(is_active=True).order_by('title')\n    items_li = \"\"\n    for i in items:\n        items_li += \"\"\"<li class=\"item-menu-mobile\"><a href=\"/category/{}\">{}</a></li>\"\"\".format(i.slug, i.title)\n    return mark_safe(items_li)",
+    "calls": [],
+    "file": "core\\templatetags\\category_template_tags.py",
+    "breadcrumbs": "core > templatetags > category_template_tags.py"
+  },
+  "categories_li_a": {
+    "code": "def categories_li_a():\n    items = Category.objects.filter(is_active=True).order_by('title')\n    items_li_a = \"\"\n    for i in items:\n        items_li_a += \"\"\"<li class=\"p-t-4\"><a href=\"/category/{}\" class=\"s-text13\">{}</a></li>\"\"\".format(i.slug,\n                                                                                                         i.title)\n    return mark_safe(items_li_a)",
+    "calls": [],
+    "file": "core\\templatetags\\category_template_tags.py",
+    "breadcrumbs": "core > templatetags > category_template_tags.py"
+  },
+  "categories_div": {
+    "code": "def categories_div():\n    \"\"\"\n    section banner\n    :return:\n    \"\"\"\n    items = Category.objects.filter(is_active=True).order_by('title')\n    items_div = \"\"\n    item_div_list = \"\"\n    for i, j in enumerate(items):\n        if not i % 2:\n            items_div += \"\"\"<div class=\"block1 hov-img-zoom pos-relative m-b-30\"><img src=\"/media/{}\" alt=\"IMG-BENNER\"><div class=\"block1-wrapbtn w-size2\"><a href=\"/category/{}\" class=\"flex-c-m size2 m-text2 bg3 hov1 trans-0-4\">{}</a></div></div>\"\"\".format(\n                j.image, j.slug, j.title)\n        else:\n            items_div_ = \"\"\"<div class=\"block1 hov-img-zoom pos-relative m-b-30\"><img src=\"/media/{}\" alt=\"IMG-BENNER\"><div class=\"block1-wrapbtn w-size2\"><a href=\"/category/{}\" class=\"flex-c-m size2 m-text2 bg3 hov1 trans-0-4\">{}</a></div></div>\"\"\".format(\n                j.image, j.slug, j.title)\n            item_div_list += \"\"\"<div class=\"col-sm-10 col-md-8 col-lg-4 m-l-r-auto\">\"\"\" + items_div + items_div_ + \"\"\"</div>\"\"\"\n            items_div = \"\"\n\n    return mark_safe(item_div_list)",
+    "calls": [],
+    "file": "core\\templatetags\\category_template_tags.py",
+    "breadcrumbs": "core > templatetags > category_template_tags.py"
+  },
+  "slides": {
+    "code": "def slides():\n    items = Slide.objects.filter(is_active=True).order_by('pk')\n    items_div = \"\"\n    for i in items:\n        items_div += \"\"\"<div class=\"item-slick1 item2-slick1\" style=\"background-image: url(/media/{});\"><div class=\"wrap-content-slide1 sizefull flex-col-c-m p-l-15 p-r-15 p-t-150 p-b-170\"><span class=\"caption1-slide1 m-text1 t-center animated visible-false m-b-15\" data-appear=\"rollIn\">{}</span><h2 class=\"caption2-slide1 xl-text1 t-center animated visible-false m-b-37\" data-appear=\"lightSpeedIn\">{}</h2><div class=\"wrap-btn-slide1 w-size1 animated visible-false\" data-appear=\"slideInUp\"><a href=\"{}\" class=\"flex-c-m size2 bo-rad-23 s-text2 bgwhite hov1 trans-0-4\">Shop Now</a></div></div></div>\"\"\".format(i.image, i.caption1, i.caption2, i.link)\n    return mark_safe(items_div)",
+    "calls": [],
+    "file": "core\\templatetags\\slide_template_tags.py",
+    "breadcrumbs": "core > templatetags > slide_template_tags.py"
+  }
+}

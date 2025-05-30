@@ -1,0 +1,84 @@
+{
+  "update_call_graph_data": {
+    "code": "def update_call_graph_data(data):\n    \"\"\"Update the global call graph data.\"\"\"\n    global call_graph_data\n    call_graph_data.clear()\n    call_graph_data.update(data)",
+    "calls": [],
+    "file": "app.py",
+    "breadcrumbs": "app.py"
+  },
+  "__init__": {
+    "code": "def __init__(self, source):\n        self.call_graph = {}\n        self.function_code = {}\n        self.source = source\n        self.current_function = None",
+    "calls": [],
+    "file": "profile_1.py",
+    "breadcrumbs": "profile_1.py"
+  },
+  "visit_FunctionDef": {
+    "code": "def visit_FunctionDef(self, node):\n        prev_function = self.current_function\n        self.current_function = node.name\n\n        # Initialize call list if not already present.\n        if node.name not in self.call_graph:\n            self.call_graph[node.name] = []\n\n        # Use ast.get_source_segment (available in Python 3.8+)\n        code_snippet = ast.get_source_segment(self.source, node)\n        self.function_code[node.name] = code_snippet if code_snippet else \"\"\n\n        self.generic_visit(node)\n        self.current_function = prev_function",
+    "calls": [],
+    "file": "profile_1.py",
+    "breadcrumbs": "profile_1.py"
+  },
+  "visit_Call": {
+    "code": "def visit_Call(self, node):\n        if isinstance(node.func, ast.Name):\n            func_name = node.func.id\n        elif isinstance(node.func, ast.Attribute):\n            func_name = node.func.attr\n        else:\n            func_name = \"unknown\"\n\n        if self.current_function:\n            self.call_graph[self.current_function].append(func_name)\n\n        self.generic_visit(node)",
+    "calls": [],
+    "file": "profile_1.py",
+    "breadcrumbs": "profile_1.py"
+  },
+  "analyze_file": {
+    "code": "def analyze_file(filepath):\n    with open(filepath, \"r\", encoding=\"utf-8\") as file:\n        source = file.read()\n    tree = ast.parse(source, filename=filepath)\n    analyzer = CallGraphAnalyzer(source)\n    analyzer.visit(tree)\n    # Combine call graph and function code into one structure.\n    result = {}\n    for func in analyzer.call_graph:\n        result[func] = {\n            \"code\": analyzer.function_code.get(func, \"\"),\n            \"calls\": analyzer.call_graph[func]\n        }\n    return result",
+    "calls": [],
+    "file": "profile_1.py",
+    "breadcrumbs": "profile_1.py"
+  },
+  "analyze_directory": {
+    "code": "def analyze_directory(directory):\n    complete_graph = {}\n    for root, _, files in os.walk(directory):\n        for file in files:\n            if file.endswith(\".py\"):\n                filepath = os.path.join(root, file)\n                file_graph = analyze_file(filepath)\n                complete_graph.update(file_graph)\n    return complete_graph",
+    "calls": [
+      "analyze_file"
+    ],
+    "file": "profile_1.py",
+    "breadcrumbs": "profile_1.py"
+  },
+  "index": {
+    "code": "def index():\n    return render_template(\"index.html\")",
+    "calls": [],
+    "file": "app.py",
+    "breadcrumbs": "app.py"
+  },
+  "data": {
+    "code": "def data():\n    return jsonify(call_graph_data)",
+    "calls": [],
+    "file": "app.py",
+    "breadcrumbs": "app.py"
+  },
+  "chatbot_query": {
+    "code": "def chatbot_query():\n    data = request.get_json()\n    user_query = data.get('query')\n    if not user_query:\n        return jsonify({'response': 'No query provided.'}), 400\n\n    response_text = call_groq_chat(user_query)\n    return jsonify({'response': response_text})",
+    "calls": [
+      "call_groq_chat"
+    ],
+    "file": "app.py",
+    "breadcrumbs": "app.py"
+  },
+  "call_groq_chat": {
+    "code": "def call_groq_chat(query):\n    \"\"\"\n    Use Groq's Python client to send a chat request to Mixtral.\n    \"\"\"\n    try:\n        client = current_app.config['GROQ_CLIENT']\n        code_context = json.dumps(call_graph_data)\n        system_message = {\n            \"role\": \"system\",\n            \"content\": (\n                \"You are a coding assistant. The following JSON represents the entire codebase: \"\n                f\"{code_context}\\n\\n\"\n                \"Answer only questions about the code. Do not provide answers outside this context. \"\n                \"Only give information when asked. Never mention the JSON file; just pretend you understand the codebase.\"\n            )\n        }\n        user_message = {\"role\": \"user\", \"content\": query}\n        completion = client.chat.completions.create(\n            model=\"mixtral-8x7b-32768\",\n            messages=[system_message, user_message],\n            temperature=1,\n            max_completion_tokens=1024,\n            top_p=1,\n            stream=False,\n            stop=None,\n        )\n        answer = completion.choices[0].message.content\n        return answer\n    except Exception as e:\n        return f\"Error calling Groq API: {str(e)}\"",
+    "calls": [],
+    "file": "app.py",
+    "breadcrumbs": "app.py"
+  },
+  "summary": {
+    "code": "def summary():\n    data = request.get_json()\n    prompt = data.get('prompt')\n    if not prompt:\n        return jsonify({'response': 'No prompt provided.'}), 400\n    try:\n        client = current_app.config['GROQ_CLIENT']\n        completion = client.chat.completions.create(\n            model=\"mixtral-8x7b-32768\",\n            messages=[\n                {\"role\": \"system\", \"content\": \"You are an expert code analyzer. Explain how these functions work together.\"},\n                {\"role\": \"user\", \"content\": prompt}\n            ],\n            temperature=1,\n            max_completion_tokens=1024,\n            top_p=1,\n            stream=False,\n            stop=None,\n        )\n        answer = completion.choices[0].message.content\n        return jsonify({'response': answer})\n    except Exception as e:\n        return jsonify({'response': f\"Error generating summary: {str(e)}\"}), 500",
+    "calls": [],
+    "file": "app.py",
+    "breadcrumbs": "app.py"
+  },
+  "select_directory": {
+    "code": "def select_directory():\n    \"\"\"Open a file dialog to select a project directory (Windows-compatible).\"\"\"\n    from tkinter import filedialog\n    return filedialog.askdirectory(title=\"Select Project Directory\")",
+    "calls": [],
+    "file": "main.py",
+    "breadcrumbs": "main.py"
+  },
+  "run_flask": {
+    "code": "def run_flask():\n        app.run(host=\"0.0.0.0\", port=5001, debug=False, use_reloader=False)",
+    "calls": [],
+    "file": "main.py",
+    "breadcrumbs": "main.py"
+  }
+}

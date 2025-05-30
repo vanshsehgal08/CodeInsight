@@ -1,0 +1,10 @@
+{
+  "dfs": {
+    "code": "def dfs(delhi, s, e, minlength=-1, path=[]):\n  path = path + [s]\n  if s == e: return path\n  if s not in delhi: return None\n  shortest = None\n  for node in delhi[s]:\n    if node not in path:\n      if minlength==-1 or len(path)<(minlength-1):\n        new = dfs(delhi, node, e, minlength, path)\n        if new:\n          if not shortest or len(new) < len(shortest):\n            shortest = new\n            minlength = len(new)  \n  return shortest",
+    "calls": [
+      "dfs"
+    ],
+    "file": "pages\\Delhi.py",
+    "breadcrumbs": "pages > Delhi.py"
+  }
+}
