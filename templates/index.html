@@ -5,8 +5,11 @@
   <title>CodeInsight</title>
   <!-- Highlight.js CSS for dark mode (Atom One Dark theme) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+  <!-- Include Highlight.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
   <!-- Include Interact.js for draggable/resizable windows -->
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     /* General Dark UI */
     body {
@@ -355,14 +358,76 @@
       color: #e0e0e0;
       line-height: 1.5em;
     }
+    /* Analysis Panel */
+    #analysis-panel {
+      position: absolute;
+      top: 60px;
+      right: 20px;
+      width: 300px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 15px;
+      display: none;
+    }
+    .analysis-section {
+      margin-bottom: 15px;
+    }
+    .analysis-section h3 {
+      margin: 0 0 10px 0;
+      color: #007bff;
+    }
+    /* Minimap */
+    .minimap {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(30, 30, 30, 0.8);
+      border: 1px solid #444;
+      border-radius: 4px;
+    }
+    /* Layout Controls */
+    #layout-controls {
+      position: absolute;
+      top: 60px;
+      left: 20px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 10px;
+    }
+    /* Color Legend */
+    #color-legend {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 10px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 5px 0;
+    }
+    .legend-color {
+      width: 15px;
+      height: 15px;
+      margin-right: 8px;
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
   <header>
     <div>CodeInsight</div>
     <div id="controls">
-      <!-- Add Show Summary Button in the top right -->
-      <button id="show-summary-button">Show Summary</button>
+      <div id="search-container">
+        <input type="text" id="search-input" placeholder="Search functions...">
+      </div>
+      <button id="show-summary-button" class="control-button">Show Summary</button>
+      <button id="toggle-minimap" class="control-button">Toggle Minimap</button>
     </div>
   </header>
   <div id="graph-container">
@@ -417,10 +482,48 @@
     <div id="summary-modal-content"></div>
   </div>
 
-  <!-- Include D3.js -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <!-- Include Highlight.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+  <div id="layout-controls">
+    <h3>Layout</h3>
+    <button class="control-button" onclick="visualizer.setLayout('force')">Force</button>
+    <button class="control-button" onclick="visualizer.setLayout('hierarchical')">Hierarchical</button>
+    <button class="control-button" onclick="visualizer.setLayout('radial')">Radial</button>
+  </div>
+  
+  <div id="color-legend">
+    <h3>Complexity</h3>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #440154"></div>
+      <span>Low</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #21918c"></div>
+      <span>Medium</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #fde725"></div>
+      <span>High</span>
+    </div>
+  </div>
+
+  <div id="analysis-panel">
+    <div class="analysis-section">
+      <h3>Complexity Metrics</h3>
+      <div id="complexity-metrics"></div>
+    </div>
+    <div class="analysis-section">
+      <h3>Code Smells</h3>
+      <div id="code-smells"></div>
+    </div>
+    <div class="analysis-section">
+      <h3>Security Issues</h3>
+      <div id="security-issues"></div>
+    </div>
+    <div class="analysis-section">
+      <h3>Documentation</h3>
+      <div id="documentation"></div>
+    </div>
+  </div>
+
   <script type="module">
     hljs.highlightAll();
     
@@ -740,52 +843,52 @@
     });
     
     document.getElementById("show-summary-button").addEventListener("click", () => {
-  const modal = document.getElementById("summary-modal");
-  // If modal is visible, close it and return.
-  if (modal.style.display === "flex") {
-    modal.style.display = "none";
-    return;
-  }
-  
-  // Otherwise, gather code snippets from all open panels.
-  let prompt = "Explain how these functions work together:\n\n";
-  codePanels.forEach((panel, funcId) => {
-    // Only include panels that are visible (i.e. not minimized)
-    if (panel.style.display !== "none") {
-      const codeElement = panel.querySelector("pre code");
-      const codeText = codeElement ? codeElement.innerText : "";
-      prompt += `Function ${funcId}:\n${codeText}\n\n`;
+      const modal = document.getElementById("summary-modal");
+      // If modal is visible, close it and return.
+      if (modal.style.display === "flex") {
+        modal.style.display = "none";
+        return;
+      }
+      
+      // Otherwise, gather code snippets from all open panels.
+      let prompt = "Explain how these functions work together:\n\n";
+      codePanels.forEach((panel, funcId) => {
+        // Only include panels that are visible (i.e. not minimized)
+        if (panel.style.display !== "none") {
+          const codeElement = panel.querySelector("pre code");
+          const codeText = codeElement ? codeElement.innerText : "";
+          prompt += `Function ${funcId}:\n${codeText}\n\n`;
+        }
+      });
+      
+      // Call the summary endpoint on your backend.
+      fetch('/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt })
+      })
+      .then(response => response.json())
+      .then(data => {
+        showSummaryModal(data.response);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showSummaryModal("Sorry, could not generate summary.");
+      });
+    });
+
+    // Function to display the summary in a modal popup.
+    function showSummaryModal(summaryText) {
+      const modal = document.getElementById("summary-modal");
+      const modalContent = document.getElementById("summary-modal-content");
+      modalContent.innerText = summaryText;
+      modal.style.display = "flex";
     }
-  });
-  
-  // Call the summary endpoint on your backend.
-  fetch('/summary', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: prompt })
-  })
-  .then(response => response.json())
-  .then(data => {
-    showSummaryModal(data.response);
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showSummaryModal("Sorry, could not generate summary.");
-  });
-});
 
-// Function to display the summary in a modal popup.
-function showSummaryModal(summaryText) {
-  const modal = document.getElementById("summary-modal");
-  const modalContent = document.getElementById("summary-modal-content");
-  modalContent.innerText = summaryText;
-  modal.style.display = "flex";
-}
-
-// Close summary modal when close button is clicked.
-document.getElementById("close-summary-modal").addEventListener("click", () => {
-  document.getElementById("summary-modal").style.display = "none";
-});
+    // Close summary modal when close button is clicked.
+    document.getElementById("close-summary-modal").addEventListener("click", () => {
+      document.getElementById("summary-modal").style.display = "none";
+    });
     
     // Chatbot messaging and loading indicator.
     function appendMessage(message, type, element = null) {
@@ -871,15 +974,88 @@ document.getElementById("close-summary-modal").addEventListener("click", () => {
         container.selectAll("circle.edge-dot").remove();
       }
     });
+
+    // Initialize the visualizer
+    const visualizer = new CodeVisualizer('graph-container');
+    
+    // Load and process the data
+    fetch('/data')
+      .then(response => response.json())
+      .then(data => {
+        // Transform the data for visualization
+        const nodes = Object.keys(data).map(name => ({
+          id: name,
+          ...data[name]
+        }));
+        
+        const links = [];
+        nodes.forEach(node => {
+          node.calls.forEach(target => {
+            if (data[target]) {
+              links.push({
+                source: node.id,
+                target: target
+              });
+            }
+          });
+        });
+        
+        visualizer.updateData({ nodes, links });
+        visualizer.createMinimap();
+      });
+      
+    // Search functionality
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', (e) => {
+      visualizer.searchNodes(e.target.value);
+    });
+    
+    // Node click handler
+    visualizer.svg.on('click', '.node', function(event, d) {
+      fetch('/analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ function: d.id })
+      })
+      .then(response => response.json())
+      .then(analysis => {
+        document.getElementById('analysis-panel').style.display = 'block';
+        
+        // Update complexity metrics
+        const complexityHtml = Object.entries(analysis.complexity)
+          .map(([key, value]) => `<div>${key}: ${value}</div>`)
+          .join('');
+        document.getElementById('complexity-metrics').innerHTML = complexityHtml;
+        
+        // Update code smells
+        const smellsHtml = analysis.code_smells
+          .map(smell => `<div class="smell">${smell.description}</div>`)
+          .join('');
+        document.getElementById('code-smells').innerHTML = smellsHtml;
+        
+        // Update security issues
+        const securityHtml = analysis.security_issues
+          .map(issue => `<div class="issue">${issue.description}</div>`)
+          .join('');
+        document.getElementById('security-issues').innerHTML = securityHtml;
+        
+        // Update documentation
+        const docHtml = Object.entries(analysis.documentation)
+          .map(([key, value]) => `<div>${key}: ${value}</div>`)
+          .join('');
+        document.getElementById('documentation').innerHTML = docHtml;
+      });
+    });
+    
+    // Toggle minimap
+    document.getElementById('toggle-minimap').addEventListener('click', () => {
+      if (visualizer.minimap) {
+        visualizer.minimap.style.display = 
+          visualizer.minimap.style.display === 'none' ? 'block' : 'none';
+      }
+    });
   </script>
-  
-  <!-- Summary Modal -->
-  <div id="summary-modal">
-    <div id="summary-modal-header">
-      <span>Functions Summary</span>
-      <button id="close-summary-modal">×</button>
-    </div>
-    <div id="summary-modal-content"></div>
-  </div>
 </body>
 </html>

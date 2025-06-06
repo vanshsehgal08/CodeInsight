@@ -4,8 +4,7 @@ import os
 import ast
 import json
 import builtins
-
-
+from code_analyzer import EnhancedCodeAnalyzer
 
 app = Flask(__name__, template_folder='templates')
 call_graph_data = {}  # Global variable to store analysis results
@@ -51,12 +50,20 @@ def analyze_file(filepath):
     tree = ast.parse(source, filename=filepath)
     analyzer = CallGraphAnalyzer(source)
     analyzer.visit(tree)
+    
+    # Enhanced analysis using the new analyzer
+    enhanced_analyzer = EnhancedCodeAnalyzer(source, filepath)
+    analysis_results = enhanced_analyzer.get_analysis_results()
+    
     result = {}
     for func in analyzer.call_graph:
         result[func] = {
             "code": analyzer.function_code.get(func, ""),
-            "calls": analyzer.call_graph[func]
-            # "file" and "breadcrumbs" will be added in analyze_directory.
+            "calls": analyzer.call_graph[func],
+            "complexity": analysis_results['complexity_metrics'].get(func, {}),
+            "code_smells": [smell for smell in analysis_results['code_smells'] if smell['name'] == func],
+            "security_issues": [issue for issue in analysis_results['security_vulnerabilities'] if issue.get('line', 0) >= analyzer.function_code[func].count('\n')],
+            "documentation": analysis_results['documentation'].get(func, {})
         }
     return result
 
@@ -100,6 +107,38 @@ def index():
 def data():
     return jsonify(call_graph_data)
 
+@app.route('/analysis', methods=['POST'])
+def get_analysis():
+    """Get detailed analysis for a specific function."""
+    data = request.get_json()
+    function_name = data.get('function')
+    
+    if not function_name or function_name not in call_graph_data:
+        return jsonify({'error': 'Function not found'}), 404
+        
+    function_data = call_graph_data[function_name]
+    return jsonify({
+        'complexity': function_data.get('complexity', {}),
+        'code_smells': function_data.get('code_smells', []),
+        'security_issues': function_data.get('security_issues', []),
+        'documentation': function_data.get('documentation', {})
+    })
+
+@app.route('/search', methods=['POST'])
+def search_functions():
+    """Search for functions by name or content."""
+    data = request.get_json()
+    query = data.get('query', '').lower()
+    
+    results = {}
+    for func_name, func_data in call_graph_data.items():
+        if (query in func_name.lower() or 
+            query in func_data.get('code', '').lower() or
+            query in func_data.get('documentation', {}).get('docstring', '').lower()):
+            results[func_name] = func_data
+            
+    return jsonify(results)
+
 @app.route('/chatbot', methods=['POST'])
 def chatbot_query():
     data = request.get_json()
@@ -117,8 +156,7 @@ def call_groq_chat(query):
     The messages list includes the user query.
     """
     try:
-        client = current_app.config['GROQ_CLIENT']  # Access the client from the app's config
-        # Here we pass the user query as a message.
+        client = current_app.config['GROQ_CLIENT']
         code_context = json.dumps(call_graph_data)
         system_message = {
             "role": "system",
@@ -151,8 +189,6 @@ def summary():
         return jsonify({'response': 'No prompt provided.'}), 400
     try:
         client = current_app.config['GROQ_CLIENT'] 
-        # Create a summary request to your LLM via Groq.
-        # You might add a system message if needed.
         completion = client.chat.completions.create(
             model="mistral-saba-24b",
             messages=[
@@ -171,7 +207,5 @@ def summary():
         return jsonify({'response': f"Error generating summary: {str(e)}"}), 500
     
 if __name__ == "__main__":
-    # Optionally, update call_graph_data here by analyzing a directory:
-    # call_graph_data = analyze_directory("your_code_directory")
     app.run(debug=True)
 

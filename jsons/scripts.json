@@ -1,0 +1,50 @@
+{
+  "serializing_widget": {
+    "code": "def serializing_widget(widget, level):\n    if hasattr(widget, \"get_object\"):\n        widget = widget.get_object()\n\n    level += 1\n    if level == int(sys.argv[4]):\n        return widget\n\n    if isinstance(widget, (DictionaryObject, dict)):\n        for k, v in widget.items():\n            widget[k] = serializing_widget(v, level)\n    elif isinstance(widget, ArrayObject):\n        widget = ArrayObject([serializing_widget(each, level) for each in widget])\n\n    return widget",
+    "calls": [
+      "serializing_widget",
+      "serializing_widget"
+    ],
+    "complexity": {
+      "cyclomatic_complexity": 7,
+      "loc": 15
+    },
+    "code_smells": [],
+    "security_issues": [],
+    "documentation": {
+      "docstring": null,
+      "parameters": [
+        "widget",
+        "level"
+      ],
+      "return_type": null,
+      "line": 14
+    },
+    "file": "diff_widget.py",
+    "breadcrumbs": "diff_widget.py"
+  },
+  "serializing_widget_from_file": {
+    "code": "def serializing_widget_from_file(filename, key, buff):\n    with open(filename, \"rb+\") as f:\n        widgets = get_widgets_by_page(f.read())\n\n        for w in widgets.values():\n            for widget in w:\n                if get_widget_key(widget, False) == key:\n                    pprint(serializing_widget(widget, 0), stream=buff)\n                    buff.writelines(\"\\n\" * 3 + \"=\" * 100 + \"\\n\" * 3)",
+    "calls": [
+      "serializing_widget"
+    ],
+    "complexity": {
+      "cyclomatic_complexity": 4,
+      "loc": 9
+    },
+    "code_smells": [],
+    "security_issues": [],
+    "documentation": {
+      "docstring": null,
+      "parameters": [
+        "filename",
+        "key",
+        "buff"
+      ],
+      "return_type": null,
+      "line": 31
+    },
+    "file": "diff_widget.py",
+    "breadcrumbs": "diff_widget.py"
+  }
+}

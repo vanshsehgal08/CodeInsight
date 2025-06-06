@@ -120,8 +120,8 @@ if __name__ == "__main__":
     flask_thread.start()
     
     # Wait briefly for the Flask server to start.
-    time.sleep(1)
+    time.sleep(2)
     
     # 9. Open the application in an embedded browser window using pywebview.
-    webview.create_window("Call Graph Visualizer", "http://localhost:5001")
-    webview.start()
+    webview.create_window("Call Graph Visualizer", "http://192.168.1.13:5001")
+    webview.start(debug=True)
